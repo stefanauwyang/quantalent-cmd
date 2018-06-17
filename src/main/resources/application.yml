@@ -2,4 +2,4 @@ spring.main.banner-mode: "off"
 
 logging.level:
   org.springframework: WARN
-  com.quantalent: WARN
+  com.quantalent: DEBUG
