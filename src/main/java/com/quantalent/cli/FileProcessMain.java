@@ -1,11 +1,16 @@
 package com.quantalent.cli;
 
+import com.quantalent.cli.exception.FileProcessRuntimeException;
 import com.quantalent.cli.model.Config;
+import com.quantalent.commons.StatusCode;
+import com.quantalent.commons.exception.BaseException;
+import com.quantalent.commons.exception.BaseRuntimeException;
 import com.quantalent.crypto.CryptoSymService;
 import com.quantalent.crypto.HashService;
 import com.quantalent.crypto.hash.HashServiceFactory;
 import com.quantalent.crypto.model.Algorithm;
 import com.quantalent.crypto.sym.CryptoSymServiceFactory;
+import org.apache.commons.cli.*;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -31,34 +36,74 @@ public class FileProcessMain implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws IOException {
-        logger.debug("Running with args: {}", args);
+    public void run(String... args) {
 
-        Config config = readConfiguration();
+        try {
+            //Config config = readConfiguration();
+            Options options = createOptions();
+            CommandLineParser parser = new DefaultParser();
+            CommandLine cmd = parser.parse(options, args);
 
-        if ("encrypt".equalsIgnoreCase(args[0])) {
-            String input = IOUtils.toString(new FileReader(config.getInputFilePath()));
-            byte[] key = IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath()));
-            CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
-            String cipher = cryptoService.encrypt(input, key);
-            FileOutputStream output = new FileOutputStream(config.getOutputFilePath());
-            IOUtils.write(cipher.getBytes("UTF-8"), output);
-        } else if ("decrypt".equalsIgnoreCase(args[0])) {
-            String input = IOUtils.toString(new FileReader(config.getInputFilePath()));
-            byte[] key = IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath()));
-            CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
-            String plain = cryptoService.decrypt(input, key);
-            FileOutputStream output = new FileOutputStream(config.getOutputFilePath());
-            IOUtils.write(plain.getBytes("UTF-8"), output);
-        } else if ("sha256".equalsIgnoreCase(args[0])) {
-            // Can be generated using: echo -n foobar | openssl dgst -binary -sha256 | openssl base64 > key.txt
-            String password = args[1];
-            HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
-            byte[] key = hashService.hash(password);
-            FileOutputStream output = new FileOutputStream(config.getOutputFilePath());
-            logger.debug("Hex: {}", Hex.encodeHexString(key));
-            IOUtils.write(Base64.getEncoder().encode(key), output);
+            boolean cmdOption = cmd.hasOption("t");
+
+            if (cmdOption) {
+                String cmdValue = cmd.getOptionValue("t");
+
+                if ("encrypt".equalsIgnoreCase(cmdValue)) {
+                    String input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
+                    byte[] key;
+                    if (cmd.hasOption("key")) {
+                        HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
+                        key = hashService.hash(cmd.getOptionValue("key"));
+                    } else if (cmd.hasOption("keyfile")) {
+                        key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
+                    } else {
+                        throw new FileProcessRuntimeException(StatusCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                    }
+                    CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
+                    String cipher = cryptoService.encrypt(input, key);
+                    FileOutputStream output = new FileOutputStream(cmd.getOptionValue("outfile"));
+                    IOUtils.write(cipher.getBytes("UTF-8"), output);
+                } else if ("decrypt".equalsIgnoreCase(cmdValue)) {
+                    String input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
+                    byte[] key;
+                    if (cmd.hasOption("key")) {
+                        HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
+                        key = hashService.hash(cmd.getOptionValue("key"));
+                    } else if (cmd.hasOption("keyfile")) {
+                        key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
+                    } else {
+                        throw new FileProcessRuntimeException(StatusCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                    }
+                    CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
+                    String plain = cryptoService.decrypt(input, key);
+                    FileOutputStream output = new FileOutputStream(cmd.getOptionValue("outfile"));
+                    IOUtils.write(plain.getBytes("UTF-8"), output);
+                } else if ("sha256".equalsIgnoreCase(cmdValue)) {
+                    // Can be generated using: echo -n foobar | openssl dgst -binary -sha256 | openssl base64 | tr -d '\n' > key.txt
+                    String password = cmd.getOptionValue("key");
+                    HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
+                    byte[] key = hashService.hash(password);
+                    FileOutputStream output = new FileOutputStream(cmd.getOptionValue("outfile"));
+                    logger.debug("Hex: {}", Hex.encodeHexString(key));
+                    IOUtils.write(Base64.getEncoder().encode(key), output);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+            logger.error(e.getMessage(), e);
         }
+    }
+
+    private Options createOptions() {
+        Options options = new Options();
+
+        options.addOption("t", true, "Target command to execute");
+        options.addOption("infile", true, "Input file");
+        options.addOption("outfile", true, "Output file");
+        options.addOption("keyfile", true, "Key file");
+        options.addOption("key", true, "Key password");
+        return options;
     }
 
     private Config readConfiguration() {
