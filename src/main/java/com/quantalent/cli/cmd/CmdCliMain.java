@@ -1,16 +1,17 @@
-package com.quantalent.cli;
+package com.quantalent.cli.cmd;
 
-import com.quantalent.cli.exception.FileProcessRuntimeException;
-import com.quantalent.cli.model.Config;
-import com.quantalent.commons.StatusCode;
-import com.quantalent.commons.exception.BaseException;
-import com.quantalent.commons.exception.BaseRuntimeException;
+import com.quantalent.cli.cmd.exception.FileProcessRuntimeException;
+import com.quantalent.cli.cmd.model.Config;
+import com.quantalent.commons.ErrorCode;
 import com.quantalent.crypto.CryptoSymService;
 import com.quantalent.crypto.HashService;
 import com.quantalent.crypto.hash.HashServiceFactory;
 import com.quantalent.crypto.model.Algorithm;
 import com.quantalent.crypto.sym.CryptoSymServiceFactory;
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -25,14 +26,14 @@ import java.io.*;
 import java.util.Base64;
 
 @SpringBootApplication
-public class FileProcessMain implements CommandLineRunner {
-    private static final Logger logger = LoggerFactory.getLogger(FileProcessMain.class);
+public class CmdCliMain implements CommandLineRunner {
+    private static final Logger logger = LoggerFactory.getLogger(CmdCliMain.class);
 
-    public FileProcessMain() {
+    public CmdCliMain() {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(FileProcessMain.class, args);
+        SpringApplication.run(CmdCliMain.class, args);
     }
 
     @Override
@@ -58,7 +59,7 @@ public class FileProcessMain implements CommandLineRunner {
                     } else if (cmd.hasOption("keyfile")) {
                         key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
                     } else {
-                        throw new FileProcessRuntimeException(StatusCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                        throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
                     }
                     CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
                     String cipher = cryptoService.encrypt(input, key);
@@ -73,7 +74,7 @@ public class FileProcessMain implements CommandLineRunner {
                     } else if (cmd.hasOption("keyfile")) {
                         key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
                     } else {
-                        throw new FileProcessRuntimeException(StatusCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                        throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
                     }
                     CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
                     String plain = cryptoService.decrypt(input, key);
@@ -110,7 +111,7 @@ public class FileProcessMain implements CommandLineRunner {
         Config config = null;
 
         // Config directory
-        File dir = new File(".fileprocess");
+        File dir = new File(".cmd");
         boolean dirExists = dir.exists();
         if (dirExists) {
             logger.debug("Config directory found: {}", dir.getAbsoluteFile());
@@ -122,7 +123,7 @@ public class FileProcessMain implements CommandLineRunner {
 
         // Config file
         logger.debug("Config directory: {}", dir.getAbsolutePath());
-        File file = new File(dir, "config.yaml");
+        File file = new File(dir, "config.yml");
         boolean fileExists = file.exists();
         if (fileExists) {
             logger.debug("Config file found: {}", file);

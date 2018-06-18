@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.quantalent.cli</groupId>
-    <artifactId>file-process</artifactId>
+    <artifactId>quantalent-cmd</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
@@ -16,6 +16,7 @@
     </parent>
 
     <build>
+        <finalName>quantalent-cmd</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -28,7 +29,7 @@
                         <configuration>
                             <classifier>spring-boot</classifier>
                             <mainClass>
-                                com.quantalent.cli.FileProcessMain
+                                com.quantalent.cli.cmd.CmdCliMain
                             </mainClass>
                         </configuration>
                     </execution>

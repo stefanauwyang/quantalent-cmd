@@ -1,4 +1,4 @@
-package com.quantalent.cli.model;
+package com.quantalent.cli.cmd.model;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
