@@ -29,7 +29,7 @@
                         <configuration>
                             <classifier>spring-boot</classifier>
                             <mainClass>
-                                com.quantalent.cli.cmd.CmdCliMain
+                                com.quantalent.cli.cmd.Main
                             </mainClass>
                         </configuration>
                     </execution>

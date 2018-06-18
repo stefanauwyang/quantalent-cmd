@@ -2,5 +2,5 @@ spring.main.banner-mode: "off"
 
 logging.level:
   org.springframework: WARN
-  com.quantalent.cli.cmd.CmdCliMain: INFO
+  com.quantalent.cli.cmd.Main: WARN
   com.quantalent: INFO

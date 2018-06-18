@@ -1,8 +1,6 @@
 package com.quantalent.cli.cmd;
 
-import com.quantalent.cli.cmd.exception.FileProcessRuntimeException;
 import com.quantalent.cli.cmd.model.Config;
-import com.quantalent.commons.ErrorCode;
 import com.quantalent.crypto.CryptoSymService;
 import com.quantalent.crypto.HashService;
 import com.quantalent.crypto.hash.HashServiceFactory;
@@ -17,38 +15,29 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.util.Base64;
+import java.util.Scanner;
 
-@SpringBootApplication
-public class CmdCliMain implements CommandLineRunner {
-    private static final Logger logger = LoggerFactory.getLogger(CmdCliMain.class);
-
-    public CmdCliMain() {
-    }
-
-    public static void main(String[] args) {
-        SpringApplication.run(CmdCliMain.class, args);
-    }
+public class CmdRunner implements CommandLineRunner {
+    private static final Logger logger = LoggerFactory.getLogger(CmdRunner.class);
 
     @Override
     public void run(String... args) {
-
         try {
-            Config config = readConfiguration();
             Options options = createOptions();
+            Config config = readConfiguration();
+
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd = parser.parse(options, args);
 
             if (cmd.hasOption("encrypt")) {
                 byte[] input;
                 if (cmd.hasOption("infile")) {
-                    logger.info("Using infile parameter");
+                    logger.info("Using infile parameter: {}", cmd.getOptionValue("infile"));
                     input = IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("infile")));
                 } else {
                     logger.info("Using inputFilePath config: {}", config.getInputFilePath());
@@ -66,7 +55,13 @@ public class CmdCliMain implements CommandLineRunner {
                     logger.info("Using keyFilePath config: {}", config.getKeyFilePath());
                     key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath())));
                 } else {
-                    throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                    logger.info("Asking for password key...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Password as key: ");
+                    String password = scanner.nextLine();
+                    logger.info("Hashing password...");
+                    HashService hashService = HashServiceFactory.getInstance();
+                    key = hashService.hash(password);
                 }
                 CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
                 String cipher = cryptoService.encrypt(input, key);
@@ -85,7 +80,7 @@ public class CmdCliMain implements CommandLineRunner {
             } else if (cmd.hasOption("decrypt")) {
                 String input;
                 if (cmd.hasOption("infile")) {
-                    logger.info("Using infile parameter");
+                    logger.info("Using infile parameter: {}", cmd.getOptionValue("infile"));
                     input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
                 } else {
                     logger.info("Using inputFilePath config: {}", config.getInputFilePath());
@@ -103,7 +98,13 @@ public class CmdCliMain implements CommandLineRunner {
                     logger.info("Using keyFilePath config: {}", config.getKeyFilePath());
                     key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath())));
                 } else {
-                    throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                    logger.info("Asking for password key...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Password as key: ");
+                    String password = scanner.nextLine();
+                    logger.info("Hashing password...");
+                    HashService hashService = HashServiceFactory.getInstance();
+                    key = hashService.hash(password);
                 }
                 CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
                 byte[] plain = cryptoService.decrypt(input, key);
@@ -220,6 +221,6 @@ public class CmdCliMain implements CommandLineRunner {
             logger.error("Unable to write config file skeleton", e);
         }
         return config;
-
     }
+
 }
