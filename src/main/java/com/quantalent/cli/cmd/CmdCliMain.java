@@ -24,6 +24,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.util.Base64;
+import java.util.Properties;
 
 @SpringBootApplication
 public class CmdCliMain implements CommandLineRunner {
@@ -40,58 +41,101 @@ public class CmdCliMain implements CommandLineRunner {
     public void run(String... args) {
 
         try {
-            //Config config = readConfiguration();
+            Config config = readConfiguration();
             Options options = createOptions();
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd = parser.parse(options, args);
 
-            boolean cmdOption = cmd.hasOption("t");
-
-            if (cmdOption) {
-                String cmdValue = cmd.getOptionValue("t");
-
-                if ("encrypt".equalsIgnoreCase(cmdValue)) {
-                    String input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
-                    byte[] key;
-                    if (cmd.hasOption("key")) {
-                        HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
-                        key = hashService.hash(cmd.getOptionValue("key"));
-                    } else if (cmd.hasOption("keyfile")) {
-                        key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
-                    } else {
-                        throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
-                    }
-                    CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
-                    String cipher = cryptoService.encrypt(input, key);
-                    FileOutputStream output = new FileOutputStream(cmd.getOptionValue("outfile"));
-                    IOUtils.write(cipher.getBytes("UTF-8"), output);
-                } else if ("decrypt".equalsIgnoreCase(cmdValue)) {
-                    String input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
-                    byte[] key;
-                    if (cmd.hasOption("key")) {
-                        HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
-                        key = hashService.hash(cmd.getOptionValue("key"));
-                    } else if (cmd.hasOption("keyfile")) {
-                        key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
-                    } else {
-                        throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
-                    }
-                    CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
-                    String plain = cryptoService.decrypt(input, key);
-                    FileOutputStream output = new FileOutputStream(cmd.getOptionValue("outfile"));
-                    IOUtils.write(plain.getBytes("UTF-8"), output);
-                } else if ("sha256".equalsIgnoreCase(cmdValue)) {
-                    // Can be generated using: echo -n foobar | openssl dgst -binary -sha256 | openssl base64 | tr -d '\n' > key.txt
-                    String password = cmd.getOptionValue("key");
-                    HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
-                    byte[] key = hashService.hash(password);
-                    FileOutputStream output = new FileOutputStream(cmd.getOptionValue("outfile"));
-                    logger.debug("Hex: {}", Hex.encodeHexString(key));
-                    IOUtils.write(Base64.getEncoder().encode(key), output);
+            if (cmd.hasOption("encrypt")) {
+                String input;
+                if (cmd.hasOption("infile")) {
+                    logger.info("Using infile parameter");
+                    input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
+                } else {
+                    logger.info("Using inputFilePath config: {}", config.getInputFilePath());
+                    input = IOUtils.toString(new FileReader(config.getInputFilePath()));
                 }
+                byte[] key;
+                if (cmd.hasOption("key")) {
+                    logger.info("Using key parameter");
+                    HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
+                    key = hashService.hash(cmd.getOptionValue("key"));
+                } else if (cmd.hasOption("keyfile")) {
+                    logger.info("Using keyfile parameter: {}", cmd.getOptionValue("keyfile"));
+                    key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
+                } else if (config.getKeyFilePath() != null) {
+                    logger.info("Using keyFilePath config: {}", config.getKeyFilePath());
+                    key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath())));
+                } else {
+                    throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                }
+                CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
+                String cipher = cryptoService.encrypt(input, key);
+
+                FileOutputStream output;
+                if (cmd.hasOption("outfile")) {
+                    logger.info("Using outfile parameter");
+                    output = new FileOutputStream(cmd.getOptionValue("outfile"));
+                } else {
+                    logger.info("Using outputFilePath config");
+                    output = new FileOutputStream(config.getOutputFilePath());
+                }
+                IOUtils.write(cipher.getBytes("UTF-8"), output);
+                output.close();
+                logger.info("Finish writing to output");
+            } else if (cmd.hasOption("decrypt")) {
+                String input;
+                if (cmd.hasOption("infile")) {
+                    logger.info("Using infile parameter");
+                    input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
+                } else {
+                    logger.info("Using inputFilePath config: {}", config.getInputFilePath());
+                    input = IOUtils.toString(new FileReader(config.getInputFilePath()));
+                }
+                byte[] key;
+                if (cmd.hasOption("key")) {
+                    logger.info("Using key parameter");
+                    HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
+                    key = hashService.hash(cmd.getOptionValue("key"));
+                } else if (cmd.hasOption("keyfile")) {
+                    logger.info("Using keyfile parameter: {}", cmd.getOptionValue("keyfile"));
+                    key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("keyfile"))));
+                } else if (config.getKeyFilePath() != null) {
+                    logger.info("Using keyFilePath config: {}", config.getKeyFilePath());
+                    key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath())));
+                } else {
+                    throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
+                }
+                CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
+                String plain = cryptoService.decrypt(input, key);
+                FileOutputStream output;
+                if (cmd.hasOption("outfile")) {
+                    logger.info("Using outfile parameter");
+                    output = new FileOutputStream(cmd.getOptionValue("outfile"));
+                } else {
+                    logger.info("Using outputFilePath config");
+                    output = new FileOutputStream(config.getOutputFilePath());
+                }
+                IOUtils.write(plain.getBytes("UTF-8"), output);
+                output.close();
+                logger.info("Finish writing to output");
+            } else if (cmd.hasOption("sha256")) {
+                // Can be generated using: echo -n foobar | openssl dgst -binary -sha256 | openssl base64 | tr -d '\n' > key.txt
+                String password = cmd.getOptionValue("key");
+                HashService hashService = HashServiceFactory.getInstance(Algorithm.HASH_SHA_256.getValue());
+                byte[] key = hashService.hash(password);
+                FileOutputStream output;
+                if (cmd.hasOption("outfile")) {
+                    output = new FileOutputStream(cmd.getOptionValue("outfile"));
+                } else {
+                    output = new FileOutputStream(config.getOutputFilePath());
+                }
+                logger.debug("Hex: {}", Hex.encodeHexString(key));
+                IOUtils.write(Base64.getEncoder().encode(key), output);
+                output.close();
+                logger.info("Finish writing to output");
             }
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
             logger.error(e.getMessage(), e);
         }
     }
@@ -99,7 +143,9 @@ public class CmdCliMain implements CommandLineRunner {
     private Options createOptions() {
         Options options = new Options();
 
-        options.addOption("t", true, "Target command to execute");
+        options.addOption("encrypt", false, "Encrypt command");
+        options.addOption("decrypt", false, "Decrypt command");
+        options.addOption("sha256", false, "Sha256 command");
         options.addOption("infile", true, "Input file");
         options.addOption("outfile", true, "Output file");
         options.addOption("keyfile", true, "Key file");
@@ -146,7 +192,7 @@ public class CmdCliMain implements CommandLineRunner {
 
             Yaml yaml = new Yaml(options);
             config = yaml.loadAs(fis, Config.class);
-            String keyFilePath = null, inputFilePath = null, outputFilePath = null;
+            String keyFilePath = ".cmd/key.txt", inputFilePath = ".cmd/input.txt", outputFilePath = ".cmd/output.txt";
             if (config != null) {
                 keyFilePath = config.getKeyFilePath();
                 logger.debug("Key file path: {}", keyFilePath);
@@ -160,9 +206,9 @@ public class CmdCliMain implements CommandLineRunner {
                 }
             } else {
                 config = new Config();
-                config.setKeyFilePath("key.txt");
-                config.setInputFilePath("input.txt");
-                config.setOutputFilePath("output.txt");
+                config.setKeyFilePath(".cmd/key.txt");
+                config.setInputFilePath(".cmd/input.txt");
+                config.setOutputFilePath(".cmd/output.txt");
             }
 
             // Write config file
