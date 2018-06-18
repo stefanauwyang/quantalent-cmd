@@ -24,7 +24,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.util.Base64;
-import java.util.Properties;
 
 @SpringBootApplication
 public class CmdCliMain implements CommandLineRunner {
@@ -47,13 +46,13 @@ public class CmdCliMain implements CommandLineRunner {
             CommandLine cmd = parser.parse(options, args);
 
             if (cmd.hasOption("encrypt")) {
-                String input;
+                byte[] input;
                 if (cmd.hasOption("infile")) {
                     logger.info("Using infile parameter");
-                    input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
+                    input = IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("infile")));
                 } else {
                     logger.info("Using inputFilePath config: {}", config.getInputFilePath());
-                    input = IOUtils.toString(new FileReader(config.getInputFilePath()));
+                    input = IOUtils.toByteArray(new FileInputStream(config.getInputFilePath()));
                 }
                 byte[] key;
                 if (cmd.hasOption("key")) {
@@ -74,10 +73,10 @@ public class CmdCliMain implements CommandLineRunner {
 
                 FileOutputStream output;
                 if (cmd.hasOption("outfile")) {
-                    logger.info("Using outfile parameter");
+                    logger.info("Using outfile parameter: {}", cmd.getOptionValue("outfile"));
                     output = new FileOutputStream(cmd.getOptionValue("outfile"));
                 } else {
-                    logger.info("Using outputFilePath config");
+                    logger.info("Using outputFilePath config: {}", config.getOutputFilePath());
                     output = new FileOutputStream(config.getOutputFilePath());
                 }
                 IOUtils.write(cipher.getBytes("UTF-8"), output);
@@ -107,16 +106,16 @@ public class CmdCliMain implements CommandLineRunner {
                     throw new FileProcessRuntimeException(ErrorCode.INVALID_PARAM, "Please provide -key or -keyfile");
                 }
                 CryptoSymService cryptoService = CryptoSymServiceFactory.getInstance();
-                String plain = cryptoService.decrypt(input, key);
+                byte[] plain = cryptoService.decrypt(input, key);
                 FileOutputStream output;
                 if (cmd.hasOption("outfile")) {
-                    logger.info("Using outfile parameter");
+                    logger.info("Using outfile parameter: {}", cmd.getOptionValue("outfile"));
                     output = new FileOutputStream(cmd.getOptionValue("outfile"));
                 } else {
-                    logger.info("Using outputFilePath config");
+                    logger.info("Using outputFilePath config: {}", config.getOutputFilePath());
                     output = new FileOutputStream(config.getOutputFilePath());
                 }
-                IOUtils.write(plain.getBytes("UTF-8"), output);
+                IOUtils.write(plain, output);
                 output.close();
                 logger.info("Finish writing to output");
             } else if (cmd.hasOption("sha256")) {
