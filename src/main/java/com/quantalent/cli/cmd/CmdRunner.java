@@ -39,9 +39,14 @@ public class CmdRunner implements CommandLineRunner {
                 if (cmd.hasOption("infile")) {
                     logger.info("Using infile parameter: {}", cmd.getOptionValue("infile"));
                     input = IOUtils.toByteArray(new FileInputStream(cmd.getOptionValue("infile")));
-                } else {
+                } else if (config.getInputFilePath() != null) {
                     logger.info("Using inputFilePath config: {}", config.getInputFilePath());
                     input = IOUtils.toByteArray(new FileInputStream(config.getInputFilePath()));
+                } else {
+                    logger.info("Asking for input file path...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Input file path: ");
+                    input = IOUtils.toByteArray(new FileInputStream(scanner.nextLine()));
                 }
                 byte[] key;
                 if (cmd.hasOption("key")) {
@@ -56,9 +61,8 @@ public class CmdRunner implements CommandLineRunner {
                     key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath())));
                 } else {
                     logger.info("Asking for password key...");
-                    Scanner scanner = new Scanner(System.in);
-                    System.out.print("Password as key: ");
-                    String password = scanner.nextLine();
+                    Console console = System.console();
+                    String password = new String(console.readPassword("Password key: "));
                     logger.info("Hashing password...");
                     HashService hashService = HashServiceFactory.getInstance();
                     key = hashService.hash(password);
@@ -70,9 +74,14 @@ public class CmdRunner implements CommandLineRunner {
                 if (cmd.hasOption("outfile")) {
                     logger.info("Using outfile parameter: {}", cmd.getOptionValue("outfile"));
                     output = new FileOutputStream(cmd.getOptionValue("outfile"));
-                } else {
+                } else if (config.getOutputFilePath() != null) {
                     logger.info("Using outputFilePath config: {}", config.getOutputFilePath());
                     output = new FileOutputStream(config.getOutputFilePath());
+                } else {
+                    logger.info("Asking for output file path...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Output file path: ");
+                    output = new FileOutputStream(scanner.nextLine());
                 }
                 IOUtils.write(cipher.getBytes("UTF-8"), output);
                 output.close();
@@ -82,9 +91,14 @@ public class CmdRunner implements CommandLineRunner {
                 if (cmd.hasOption("infile")) {
                     logger.info("Using infile parameter: {}", cmd.getOptionValue("infile"));
                     input = IOUtils.toString(new FileReader(cmd.getOptionValue("infile")));
-                } else {
+                } else if (config.getInputFilePath() != null) {
                     logger.info("Using inputFilePath config: {}", config.getInputFilePath());
                     input = IOUtils.toString(new FileReader(config.getInputFilePath()));
+                } else {
+                    logger.info("Asking for input file path...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Input file path: ");
+                    input = IOUtils.toString(new FileReader(scanner.nextLine()));
                 }
                 byte[] key;
                 if (cmd.hasOption("key")) {
@@ -99,9 +113,8 @@ public class CmdRunner implements CommandLineRunner {
                     key = Base64.getDecoder().decode(IOUtils.toByteArray(new FileInputStream(config.getKeyFilePath())));
                 } else {
                     logger.info("Asking for password key...");
-                    Scanner scanner = new Scanner(System.in);
-                    System.out.print("Password as key: ");
-                    String password = scanner.nextLine();
+                    Console console = System.console();
+                    String password = new String(console.readPassword("Password key: "));
                     logger.info("Hashing password...");
                     HashService hashService = HashServiceFactory.getInstance();
                     key = hashService.hash(password);
@@ -112,9 +125,14 @@ public class CmdRunner implements CommandLineRunner {
                 if (cmd.hasOption("outfile")) {
                     logger.info("Using outfile parameter: {}", cmd.getOptionValue("outfile"));
                     output = new FileOutputStream(cmd.getOptionValue("outfile"));
-                } else {
+                } else if (config.getOutputFilePath() != null) {
                     logger.info("Using outputFilePath config: {}", config.getOutputFilePath());
                     output = new FileOutputStream(config.getOutputFilePath());
+                } else {
+                    logger.info("Asking for output file path...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Output file path: ");
+                    output = new FileOutputStream(scanner.nextLine());
                 }
                 IOUtils.write(plain, output);
                 output.close();
@@ -127,8 +145,13 @@ public class CmdRunner implements CommandLineRunner {
                 FileOutputStream output;
                 if (cmd.hasOption("outfile")) {
                     output = new FileOutputStream(cmd.getOptionValue("outfile"));
-                } else {
+                } else if (config.getOutputFilePath() != null) {
                     output = new FileOutputStream(config.getOutputFilePath());
+                } else {
+                    logger.info("Asking for output file path...");
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.print("Output file path: ");
+                    output = new FileOutputStream(scanner.nextLine());
                 }
                 logger.debug("Hex: {}", Hex.encodeHexString(key));
                 IOUtils.write(Base64.getEncoder().encode(key), output);
@@ -206,9 +229,6 @@ public class CmdRunner implements CommandLineRunner {
                 }
             } else {
                 config = new Config();
-                config.setKeyFilePath(".cmd/key.txt");
-                config.setInputFilePath(".cmd/input.txt");
-                config.setOutputFilePath(".cmd/output.txt");
             }
 
             // Write config file
